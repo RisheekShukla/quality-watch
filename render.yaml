@@ -1,0 +1,75 @@
+# QualityWatch — one-click deploy on Render (https://render.com)
+#
+# After sync: set CloudAMQP credentials (free tier) for RabbitMQ env vars, then redeploy backend.
+# Dashboard login: demo + generated QUALITYWATCH_DASHBOARD_PASSWORD (copy from backend env).
+
+databases:
+  - name: qualitywatch-db
+    plan: free
+    databaseName: qualitywatch
+    user: qualitywatch
+
+services:
+  - type: web
+    name: qualitywatch-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: docker/backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    buildFilter:
+      paths:
+        - docker/backend/**
+        - qualitywatch-backend/**
+        - qualitywatch-agent/**
+        - pom.xml
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATABASE_URL
+        fromDatabase:
+          name: qualitywatch-db
+          property: connectionString
+      - key: SPRING_RABBITMQ_HOST
+        sync: false
+      - key: SPRING_RABBITMQ_PORT
+        value: "5672"
+      - key: SPRING_RABBITMQ_USERNAME
+        sync: false
+      - key: SPRING_RABBITMQ_PASSWORD
+        sync: false
+      - key: QUALITYWATCH_API_KEY
+        generateValue: true
+      - key: QUALITYWATCH_DASHBOARD_USER
+        value: demo
+      - key: QUALITYWATCH_DASHBOARD_PASSWORD
+        generateValue: true
+      - key: QUALITYWATCH_CORS_ALLOWED_ORIGINS
+        fromService:
+          name: qualitywatch-frontend
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: qualitywatch-frontend
+    runtime: docker
+    plan: free
+    dockerfilePath: qualitywatch-frontend/Dockerfile
+    dockerContext: qualitywatch-frontend
+    healthCheckPath: /
+    buildFilter:
+      paths:
+        - qualitywatch-frontend/**
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          name: qualitywatch-backend
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: VITE_DASHBOARD_USER
+        value: demo
+      - key: VITE_DASHBOARD_PASSWORD
+        fromService:
+          name: qualitywatch-backend
+          type: web
+          envVarKey: QUALITYWATCH_DASHBOARD_PASSWORD

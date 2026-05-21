@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:qualitywatch}}
+    username: ${SPRING_DATASOURCE_USERNAME:${PGUSER:qualitywatch}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${PGPASSWORD:qualitywatch}}
+
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
+
+qualitywatch:
+  api-key: ${QUALITYWATCH_API_KEY}
+  cors:
+    allowed-origins: ${QUALITYWATCH_CORS_ALLOWED_ORIGINS}
+  dashboard:
+    username: ${QUALITYWATCH_DASHBOARD_USER}
+    password: ${QUALITYWATCH_DASHBOARD_PASSWORD}
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+logging:
+  level:
+    root: INFO
+    com.qualitywatch: INFO
