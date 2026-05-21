@@ -1,49 +1,136 @@
+<div align="center">
+
 # QualityWatch
 
-> Tracks test coverage and build health from CI in one dashboard.
+**See test coverage, flaky tests, and build health — all in one place.**
 
-**Live demo:** `https://YOUR-FRONTEND-URL` · **API:** `https://YOUR-BACKEND-URL`  
-*(Update after deploy — see [Deploy](#deploy))*
+Tracks quality signals from your Java CI pipelines and turns them into a live engineering dashboard.
+
+<br />
+
+[![Java](https://img.shields.io/badge/Java-21-orange?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![RabbitMQ](https://img.shields.io/badge/RabbitMQ-Async-FF6600?style=for-the-badge&logo=rabbitmq&logoColor=white)](https://www.rabbitmq.com/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+
+<br />
+
+[**Live Demo**](https://YOUR-FRONTEND-URL) · [**API Health**](https://YOUR-BACKEND-URL/actuator/health) · [**Deploy Guide**](#-deploy)
+
+<br />
+
+*Replace placeholder URLs after deploying to Render or Railway.*
+
+</div>
 
 ---
 
-## What is this?
+## The problem
 
-QualityWatch collects quality signals from your Java builds and shows them in one place:
+Java teams run tests in CI every day, but quality data is scattered:
 
-| You get | From |
-|---------|------|
-| Coverage trends | JaCoCo reports |
-| Flaky test detection | Allure / test execution data |
-| Build health history | CI build metadata + test outcomes |
+- JaCoCo coverage lives in build artifacts
+- Allure / test results sit in reports nobody revisits
+- Flaky tests are hard to track across builds
+- There is no single view of **“is this project getting healthier?”**
 
-**Flow:** CI uploads telemetry → API stores event → RabbitMQ processes async → Dashboard reads analytics.
+## The solution
+
+**QualityWatch** is a full-stack observability platform that:
+
+1. **Collects** JaCoCo + Allure telemetry from CI (Maven plugin or REST API)
+2. **Processes** it asynchronously through RabbitMQ into PostgreSQL
+3. **Surfaces** trends, flaky tests, and build health in a React dashboard
+
+Built for portfolio demos, resume projects, and teams who want a lightweight quality command center.
 
 ---
 
-## What's in the repo?
+## What you get
 
-| Module | Purpose |
-|--------|---------|
-| `qualitywatch-backend` | Spring Boot API, Postgres, RabbitMQ workers |
-| `qualitywatch-frontend` | React dashboard (Vite + Tailwind + Recharts) |
-| `qualitywatch-agent` | Maven plugin — auto-upload on `mvn verify` |
-| `docker/` | Local & production Docker Compose |
-| `scripts/` | Demo seed script, deploy helpers |
+<table>
+<tr>
+<td width="50%" valign="top">
 
-**Tech stack:** Java 21 · Spring Boot 3 · PostgreSQL · Flyway · RabbitMQ · React · Docker · GitHub Actions · Testcontainers
+### Dashboard at a glance
+- Latest **line & branch coverage** KPIs
+- **Coverage trend** charts over time
+- **Flaky test** detection with failure rates
+- **Build health** timeline (pass/fail, test counts)
+
+</td>
+<td width="50%" valign="top">
+
+### Built for real pipelines
+- **Maven plugin** uploads on `mvn verify`
+- **Non-blocking** — CI never fails if QualityWatch is down
+- **API key** auth for uploads, **HTTP Basic** for dashboard reads
+- **Idempotent** processing + retry/DLQ for reliability
+
+</td>
+</tr>
+</table>
+
+### Dashboard pages
+
+| Page | What it shows |
+|------|---------------|
+| `/dashboard` | Overview — coverage KPIs, trend chart, flaky tests, recent builds |
+| `/coverage` | Deep dive into line/branch coverage trends by branch |
+| `/tests` | Flaky tests ranked by failure rate and confidence |
+| `/builds` | Build history with total/failed test counts per run |
+
+---
+
+## How it works
+
+```mermaid
+flowchart LR
+    CI["Maven CI / curl"] -->|POST telemetry| API["Spring Boot API"]
+    API --> PG[(PostgreSQL)]
+    API --> MQ[RabbitMQ]
+    MQ --> Worker["JaCoCo + Allure processors"]
+    Worker --> PG
+    Worker --> Agg["Trends + flaky detection"]
+    Agg --> PG
+    UI["React Dashboard"] -->|GET analytics| API
+```
+
+| Step | What happens |
+|------|--------------|
+| **1. Ingest** | CI sends JSON payload → event stored → message queued |
+| **2. Process** | Consumer parses JaCoCo/Allure → normalized tables |
+| **3. Aggregate** | Materialized views refreshed, flaky tests recomputed |
+| **4. Visualize** | Dashboard pulls `/api/v1/analytics/*` endpoints |
+
+---
+
+## Project structure
+
+```
+quality-watch/
+├── qualitywatch-backend/    # Spring Boot API, Flyway migrations, RabbitMQ workers
+├── qualitywatch-frontend/   # React + Vite + Tailwind + Recharts dashboard
+├── qualitywatch-agent/      # Maven plugin (JaCoCo + Allure collectors)
+├── docker/                  # Local & production Docker Compose
+├── scripts/                 # Demo seed + deploy helpers
+├── render.yaml              # One-click Render Blueprint
+└── docs/                    # Render & Railway deploy guides
+```
 
 ---
 
 ## Quick start
 
-### Option A — Full stack in Docker (recommended)
+### Docker — full stack in 2 commands
 
-**Prerequisites:** Docker Desktop
+**Requires:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 ```bash
 cd docker
-cp .env.example .env   # edit secrets if needed
+cp .env.example .env
 docker compose -f docker-compose.prod.yml --env-file .env up --build -d
 ```
 
@@ -52,64 +139,42 @@ docker compose -f docker-compose.prod.yml --env-file .env up --build -d
 | Dashboard | http://localhost:3000 |
 | API | http://localhost:8080 |
 
-Seed demo data:
+Seed demo data and open the dashboard:
 
 ```bash
-export QUALITYWATCH_API_KEY=local-upload-key   # match docker/.env
+export QUALITYWATCH_API_KEY=local-upload-key
 ./scripts/seed-demo-telemetry.sh http://localhost:8080
 ```
 
-Open **http://localhost:3000** → select project **demo-service**.
+→ Open **http://localhost:3000** → select **`demo-service`**
 
-### Option B — Dev mode (backend + frontend separately)
-
-**Prerequisites:** Java 21, Maven 3.9+, Node 20+, Docker
+<details>
+<summary><strong>Dev mode</strong> — run backend & frontend separately</summary>
 
 ```bash
-# 1. Infrastructure
+# Infrastructure
 cd docker && docker compose up -d postgres rabbitmq
 
-# 2. Backend
+# Backend (port 8080)
 cd qualitywatch-backend && mvn spring-boot:run
-# API: http://localhost:8080 · Swagger: http://localhost:8080/swagger-ui.html
 
-# 3. Frontend
+# Frontend (port 5173)
 cd qualitywatch-frontend && npm install && npm run dev
-# Dashboard: http://localhost:5173
 ```
 
-Routes: `/dashboard`, `/coverage`, `/tests`, `/builds`.
+Swagger UI (dev only): http://localhost:8080/swagger-ui.html
 
----
-
-## Deploy
-
-| Platform | Guide |
-|----------|--------|
-| **Render** (recommended, free tier) | [docs/DEPLOY-RENDER.md](docs/DEPLOY-RENDER.md) |
-| **Railway** | [docs/DEPLOY-RAILWAY.md](docs/DEPLOY-RAILWAY.md) |
-
-**Render quick steps:**
-
-1. Push repo to GitHub
-2. Render → **New Blueprint** → connect repo ([`render.yaml`](render.yaml))
-3. Add [CloudAMQP](https://www.cloudamqp.com/) credentials to backend env (see deploy doc)
-4. Set Postgres JDBC URL correctly (host only — username/password as separate vars)
-5. Seed demo data → add frontend URL to README and resume
-
-Production env reference: [docker/.env.example](docker/.env.example) · Railway configs: [`railway.backend.toml`](railway.backend.toml), [`railway.frontend.toml`](railway.frontend.toml)
+</details>
 
 ---
 
 ## CI integration
 
-Install the Maven plugin locally:
+Install the Maven agent, then add to your project's `pom.xml`:
 
 ```bash
 cd qualitywatch-agent && mvn install
 ```
-
-Add to your project `pom.xml`:
 
 ```xml
 <plugin>
@@ -123,19 +188,16 @@ Add to your project `pom.xml`:
   </configuration>
   <executions>
     <execution>
-      <goals>
-        <goal>upload</goal>
-      </goals>
+      <goals><goal>upload</goal></goals>
     </execution>
   </executions>
 </plugin>
 ```
 
-Runs on `mvn verify`. Upload is non-blocking — your build won't fail if QualityWatch is down.
+Runs automatically on `mvn verify`. Collects JaCoCo coverage + Allure test results and uploads to QualityWatch.
 
----
-
-## Upload telemetry (curl)
+<details>
+<summary><strong>Manual upload via curl</strong></summary>
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/telemetry/upload \
@@ -165,31 +227,56 @@ curl -X POST http://localhost:8080/api/v1/telemetry/upload \
   }'
 ```
 
-Or run `./scripts/seed-demo-telemetry.sh http://localhost:8080`.
+</details>
 
 ---
 
-## Architecture
+## Deploy
 
-```
-Maven CI ──► POST /api/v1/telemetry/upload ──► Postgres
-                        │
-                        └──► RabbitMQ ──► Process JaCoCo/Allure ──► Analytics
-                                                      │
-React Dashboard ◄── GET /api/v1/analytics/* ◄────────┘
-```
+Ship a public HTTPS demo for your resume:
 
-- **Ingest:** API key–protected upload → event persisted → queued
-- **Process:** JaCoCo/Allure JSON → normalized tables (idempotent)
-- **Aggregate:** coverage materialized views + flaky test detection
-- **Messaging:** retry policy + dead-letter queue for failed jobs
+| Platform | Guide | Best for |
+|----------|-------|----------|
+| **Render** | [docs/DEPLOY-RENDER.md](docs/DEPLOY-RENDER.md) | Free tier, Blueprint deploy |
+| **Railway** | [docs/DEPLOY-RAILWAY.md](docs/DEPLOY-RAILWAY.md) | All-in-one Docker services |
+
+**Render checklist:**
+1. Connect GitHub repo → **New Blueprint** → uses [`render.yaml`](render.yaml)
+2. Add [CloudAMQP](https://www.cloudamqp.com/) RabbitMQ credentials
+3. Set Postgres JDBC URL as `jdbc:postgresql://HOST:5432/DB` (credentials in separate env vars)
+4. Seed demo data → update live URLs in this README
+
+Env reference: [`docker/.env.example`](docker/.env.example)
 
 ---
 
-## Testing
+## Tech stack
+
+| Layer | Technologies |
+|-------|-------------|
+| **Backend** | Java 21, Spring Boot 3, Spring Data JPA, Flyway, Spring Security |
+| **Messaging** | RabbitMQ (retry, dead-letter queue, aggregation consumer) |
+| **Database** | PostgreSQL 16, materialized views for coverage trends |
+| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS, Recharts, TanStack Query |
+| **Agent** | Maven plugin, JaCoCo + Allure collectors |
+| **Ops** | Docker Compose, Render/Railway, GitHub Actions CI, Testcontainers |
+
+---
+
+## Testing & CI
 
 ```bash
-mvn verify   # from repo root
+mvn verify   # unit + integration tests (Testcontainers when Docker is available)
 ```
 
-Integration tests use Testcontainers when Docker is available; skipped otherwise. CI runs on every push via [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+Every push runs the full build pipeline via [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — backend tests, frontend build, and lint.
+
+---
+
+<div align="center">
+
+**Built by [Risheek Shukla](https://github.com/RisheekShukla)**
+
+If this project helped you, consider giving it a star.
+
+</div>
