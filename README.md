@@ -17,11 +17,8 @@ Tracks quality signals from your Java CI pipelines and turns them into a live en
 
 <br />
 
-[**Live Demo**](https://YOUR-FRONTEND-URL) · [**API Health**](https://YOUR-BACKEND-URL/actuator/health) · [**Deploy Guide**](#-deploy)
+<img width="1536" height="1024" alt="10389582-d24d-45e8-9257-ef09439da498" src="https://github.com/user-attachments/assets/f9bbadf0-217d-4a9b-a011-61af8fcbbf77" />
 
-<br />
-
-*Replace placeholder URLs after deploying to Render or Railway.*
 
 </div>
 
